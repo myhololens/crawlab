@@ -1,112 +1,167 @@
 # Crawlab
 
-Celery-based web crawler admin platform for managing distributed web spiders regardless of languages and frameworks. 
+![](http://114.67.75.98:8082/buildStatus/icon?job=crawlab%2Fmaster)
+![](https://img.shields.io/github/release/crawlab-team/crawlab.svg)
+![](https://img.shields.io/github/last-commit/crawlab-team/crawlab.svg)
+![](https://img.shields.io/github/issues/crawlab-team/crawlab.svg)
+![](https://img.shields.io/github/contributors/crawlab-team/crawlab.svg)
+![](https://img.shields.io/docker/pulls/tikazyq/crawlab)
+![](https://img.shields.io/github/license/crawlab-team/crawlab.svg)
 
-[Demo](http://139.129.230.98:8080)
+[中文](https://github.com/crawlab-team/crawlab/blob/master/README-zh.md) | English
 
-[中文文档](https://github.com/tikazyq/crawlab/blob/master/README-zh.md)
+[Installation](#installation) | [Run](#run) | [Screenshot](#screenshot) | [Architecture](#architecture) | [Integration](#integration-with-other-frameworks) | [Compare](#comparison-with-other-frameworks) | [Community & Sponsorship](#community--sponsorship)
 
-## Pre-requisite
-- Python3
-- MongoDB
-- Redis
+Golang-based distributed web crawler management platform, supporting various languages including Python, NodeJS, Go, Java, PHP and various web crawler frameworks including Scrapy, Puppeteer, Selenium.
+
+[Demo](http://crawlab.cn/demo) | [Documentation](https://tikazyq.github.io/crawlab-docs)
 
 ## Installation
 
-```bash
-# install the requirements for backend
-pip install -r requirements.txt
+Two methods:
+1. [Docker](https://tikazyq.github.io/crawlab-docs/Installation/Docker.html) (Recommended)
+2. [Direct Deploy](https://tikazyq.github.io/crawlab-docs/Installation/Direct.html) (Check Internal Kernel)
+3. [Kubernetes](https://mp.weixin.qq.com/s/3Q1BQATUIEE_WXcHPqhYbA)
+
+### Pre-requisite (Docker)
+- Docker 18.03+
+- Redis
+- MongoDB 3.6+
+
+### Pre-requisite (Direct Deploy)
+- Go 1.12+
+- Node 8.12+
+- Redis
+- MongoDB 3.6+
+
+## Run
+
+### Docker
+
+Please use `docker-compose` to one-click to start up. By doing so, you don't even have to configure MongoDB and Redis databases. Create a file named `docker-compose.yml` and input the code below.
+
+
+```yaml
+version: '3.3'
+services:
+  master: 
+    image: tikazyq/crawlab:latest
+    container_name: master
+    environment:
+      CRAWLAB_API_ADDRESS: "http://localhost:8000"
+      CRAWLAB_SERVER_MASTER: "Y"
+      CRAWLAB_MONGO_HOST: "mongo"
+      CRAWLAB_REDIS_ADDRESS: "redis"
+    ports:    
+      - "8080:8080" # frontend
+      - "8000:8000" # backend
+    depends_on:
+      - mongo
+      - redis
+  mongo:
+    image: mongo:latest
+    restart: always
+    ports:
+      - "27017:27017"
+  redis:
+    image: redis:latest
+    restart: always
+    ports:
+      - "6379:6379"
 ```
 
-```bash
-# install frontend node modules
-cd frontend
-npm install
-```
-
-## Configure
-
-Please edit configuration file `config.py` to configure api and database connections.
-
-## Quick Start
-```bash
-# Start backend API
-python app.py
-
-# Start Flower service
-python ./bin/run_flower.py
-
-# Start worker
-python ./bin/run_worker.py
-```
+Then execute the command below, and Crawlab Master Node + MongoDB + Redis will start up. Open the browser and enter `http://localhost:8080` to see the UI interface.
 
 ```bash
-# run frontend client
-cd frontend
-npm run serve
+docker-compose up
 ```
+
+For Docker Deployment details, please refer to [relevant documentation](https://tikazyq.github.io/crawlab-docs/Installation/Docker.html).
+
 
 ## Screenshot
 
+#### Login
+
+![](https://raw.githubusercontent.com/tikazyq/crawlab-docs/master/images/login.png)
+
 #### Home Page
-![home](./docs/img/screenshot-home.png)
+
+![](https://raw.githubusercontent.com/tikazyq/crawlab-docs/master/images/home.png)
+
+#### Node List
+
+![](https://raw.githubusercontent.com/tikazyq/crawlab-docs/master/images/node-list.png)
+
+#### Node Network
+
+![](https://raw.githubusercontent.com/tikazyq/crawlab-docs/master/images/node-network.png)
 
 #### Spider List
 
-![spider-list](./docs/img/screenshot-spiders.png)
+![](https://raw.githubusercontent.com/tikazyq/crawlab-docs/master/images/spider-list.png)
 
-#### Spider Detail - Overview
+#### Spider Overview
 
-![spider-list](./docs/img/screenshot-spider-detail-overview.png)
+![](https://raw.githubusercontent.com/tikazyq/crawlab-docs/master/images/spider-overview.png)
 
-#### Task Detail - Results
+#### Spider Analytics
 
-![spider-list](./docs/img/screenshot-task-detail-results.png)
+![](https://raw.githubusercontent.com/tikazyq/crawlab-docs/master/images/spider-analytics.png)
+
+#### Spider Files
+
+![](https://raw.githubusercontent.com/tikazyq/crawlab-docs/master/images/spider-file.png)
+
+#### Task Results
+
+![](https://raw.githubusercontent.com/tikazyq/crawlab-docs/master/images/task-results.png)
+
+#### Cron Job
+
+![](https://raw.githubusercontent.com/tikazyq/crawlab-docs/master/images/schedule.png)
 
 ## Architecture
 
-Crawlab's architecture is very similar to Celery's, but a few more modules including Frontend, Spiders and Flower are added to feature the crawling management functionality. 
+The architecture of Crawlab is consisted of the Master Node and multiple Worker Nodes, and Redis and MongoDB databases which are mainly for nodes communication and data storage.
 
-![crawlab-architecture](./docs/img/crawlab-architecture.png)
+![](https://raw.githubusercontent.com/tikazyq/crawlab-docs/master/images/architecture.png)
 
-### Nodes
+The frontend app makes requests to the Master Node, which assigns tasks and deploys spiders through MongoDB and Redis. When a Worker Node receives a task, it begins to execute the crawling task, and stores the results to MongoDB. The architecture is much more concise compared with versions before `v0.3.0`. It has removed unnecessary Flower module which offers node monitoring services. They are now done by Redis.
 
-Nodes are actually the workers defined in Celery. A node is running and connected to a task queue, redis for example, to receive and run tasks. As spiders need to be deployed to the nodes, users should specify their ip addresses and ports before the deployment.
+### Master Node
 
-### Spiders
+The Master Node is the core of the Crawlab architecture. It is the center control system of Crawlab.
 
-##### Auto Discovery
-In `config.py` file, edit `PROJECT_SOURCE_FILE_FOLDER` as the directory where the spiders projects are located. The web app will discover spider projects automatically. How simple is that!
+The Master Node offers below services:
+1. Crawling Task Coordination;
+2. Worker Node Management and Communication;
+3. Spider Deployment;
+4. Frontend and API Services;
+5. Task Execution (one can regard the Master Node as a Worker Node)
 
-##### Deploy Spiders
+The Master Node communicates with the frontend app, and send crawling tasks to Worker Nodes. In the mean time, the Master Node synchronizes (deploys) spiders to Worker Nodes, via Redis and MongoDB GridFS.
 
-All spiders need to be deployed to a specific node before crawling. Simply click "Deploy" button on spider detail page and the spiders will be deployed to all active nodes. 
+### Worker Node
 
-##### Run Spiders
+The main functionality of the Worker Nodes is to execute crawling tasks and store results and logs, and communicate with the Master Node through Redis `PubSub`. By increasing the number of Worker Nodes, Crawlab can scale horizontally, and different crawling tasks can be assigned to different nodes to execute.
 
-After deploying the spider, you can click "Run" button on spider detail page and select a specific node to start crawling. It will triggers a task for the crawling, where you can see in detail in tasks page.
+### MongoDB
 
-### Tasks
+MongoDB is the operational database of Crawlab. It stores data of nodes, spiders, tasks, schedules, etc. The MongoDB GridFS file system is the medium for the Master Node to store spider files and synchronize to the Worker Nodes.
 
-Tasks are triggered and run by the workers. Users can view the task status, logs and results in the task detail page. 
+### Redis
 
-### App
-
-This is a Flask app that provides necessary API for common operations such as CRUD, spider deployment and task running. Each node has to run the flask app to get spiders deployed on this machine. Simply run `python manage.py app` or `python ./bin/run_app.py` to start the app.
-
-### Broker
-
-Broker is the same as defined in Celery. It is the queue for running async tasks.
+Redis is a very popular Key-Value database. It offers node communication services in Crawlab. For example, nodes will execute `HSET` to set their info into a hash list named `nodes` in Redis, and the Master Node will identify online nodes according to the hash list.
 
 ### Frontend
 
-Frontend is basically a Vue SPA that inherits from [Vue-Element-Admin](https://github.com/PanJiaChen/vue-element-admin) of [PanJiaChen](https://github.com/PanJiaChen). Thanks for his awesome template.
+Frontend is a SPA based on 
+[Vue-Element-Admin](https://github.com/PanJiaChen/vue-element-admin). It has re-used many Element-UI components to support corresponding display. 
 
 ## Integration with Other Frameworks
 
-A task is triggered via `Popen` in python `subprocess` module. A Task ID is will be defined as a variable `CRAWLAB_TASK_ID` in the shell environment to link the data to the task. 
-
-In your spider program, you should store the `CRAWLAB_TASK_ID` value in the database with key `task_id`. Then Crawlab would know how to link those results to a particular task. For now, Crawlab only supports MongoDB. 
+A crawling task is actually executed through a shell command. The Task ID will be passed to the crawling task process in the form of environment variable named `CRAWLAB_TASK_ID`. By doing so, the data can be related to a task. Also, another environment variable `CRAWLAB_COLLECTION` is passed by Crawlab as the name of the collection to store results data.
 
 ### Scrapy
 
@@ -139,33 +194,37 @@ class JuejinPipeline(object):
 
 There are existing spider management frameworks. So why use Crawlab? 
 
-The reason is that most of the existing platforms are depending on Scrapyd, which limits the choice only within python and scrapy. Surely scrapy is a great web crawl frameowrk, but it cannot do everything. 
+The reason is that most of the existing platforms are depending on Scrapyd, which limits the choice only within python and scrapy. Surely scrapy is a great web crawl framework, but it cannot do everything. 
 
 Crawlab is easy to use, general enough to adapt spiders in any language and any framework. It has also a beautiful frontend interface for users to manage spiders much more easily. 
 
 |Framework | Type | Distributed | Frontend | Scrapyd-Dependent |
 |:---:|:---:|:---:|:---:|:---:|
-| [Crawlab](https://github.com/tikazyq/crawlab) | Admin Platform | Y | Y | N
-| [Gerapy](https://github.com/Gerapy/Gerapy) | Admin Platform | Y | Y | Y
-| [SpiderKeeper](https://github.com/DormyMo/SpiderKeeper) | Admin Platform | Y | Y | Y
+| [Crawlab](https://github.com/crawlab-team/crawlab) | Admin Platform | Y | Y | N
 | [ScrapydWeb](https://github.com/my8100/scrapydweb) | Admin Platform | Y | Y | Y
+| [SpiderKeeper](https://github.com/DormyMo/SpiderKeeper) | Admin Platform | Y | Y | Y
+| [Gerapy](https://github.com/Gerapy/Gerapy) | Admin Platform | Y | Y | Y
 | [Scrapyd](https://github.com/scrapy/scrapyd) | Web Service | Y | N | N/A
 
-## TODOs
-##### Backend
-- [ ] File Management
-- [ ] MySQL Database Support
-- [ ] Task Restart
-- [ ] Node Monitoring
-- [ ] More spider examples
+## Contributors
+<a href="https://github.com/tikazyq">
+  <img src="https://avatars3.githubusercontent.com/u/3393101?s=460&v=4" height="80">
+</a>
+<a href="https://github.com/wo10378931">
+  <img src="https://avatars2.githubusercontent.com/u/8297691?s=460&v=4" height="80">
+</a>
+<a href="https://github.com/yaziming">
+  <img src="https://avatars2.githubusercontent.com/u/54052849?s=460&v=4" height="80">
+</a>
+<a href="https://github.com/hantmac">
+  <img src="https://avatars2.githubusercontent.com/u/7600925?s=460&v=4" height="80">
+</a>
 
-##### Frontend
-- [ ] Task Stats/Analytics
-- [ ] Table Filters
-- [x] Multi-Language Support (中文)
-- [ ] Login & User Management
-- [ ] General Search
+## Community & Sponsorship
 
-If you like Crawlab or would like to contribute to it, please add the Author's Wechat noting "Crawlab" to enter the discussion group. 
+If you feel Crawlab could benefit your daily work or your company, please add the author's Wechat account noting "Crawlab" to enter the discussion group. Or you scan the Alipay QR code below to give us a reward to upgrade our teamwork software or buy a coffee.
 
-![](https://user-gold-cdn.xitu.io/2019/3/15/169814cbd5e600e9?imageslim)
+<p align="center">
+    <img src="https://crawlab.oss-cn-hangzhou.aliyuncs.com/gitbook/qrcode.png" height="360">
+    <img src="https://crawlab.oss-cn-hangzhou.aliyuncs.com/gitbook/payment.jpg" height="360">
+</p>

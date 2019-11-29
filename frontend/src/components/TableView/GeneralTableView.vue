@@ -5,7 +5,7 @@
       :header-cell-style="{background:'rgb(48, 65, 86)',color:'white'}"
       border>
       <template v-for="col in columns">
-        <el-table-column :key="col" :label="col" :property="col" align="center">
+        <el-table-column :key="col" :label="col" :property="col" min-width="120">
         </el-table-column>
       </template>
     </el-table>
@@ -58,18 +58,18 @@ export default {
   computed: {
     filteredData () {
       return this.data
-        .map(d => d)
-        .filter((d, index) => {
-          // pagination
-          const pageNum = this.pageNum
-          const pageSize = this.pageSize
-          return (pageSize * (pageNum - 1) <= index) && (index < pageSize * pageNum)
-        })
+      // .map(d => d)
+      // .filter((d, index) => {
+      //   // pagination
+      //   const pageNum = this.pageNum
+      //   const pageSize = this.pageSize
+      //   return (pageSize * (pageNum - 1) <= index) && (index < pageSize * pageNum)
+      // })
     }
   },
   methods: {
     onPageChange () {
-      this.$emit('page-change')
+      this.$emit('page-change', { pageNum: this.pageNum, pageSize: this.pageSize })
     }
   }
 }

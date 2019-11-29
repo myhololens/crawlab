@@ -6,18 +6,22 @@
         <task-overview/>
       </el-tab-pane>
       <el-tab-pane :label="$t('Log')" name="log">
-        <div class="log-view">
-          <pre>
-            {{taskLog}}
-          </pre>
-        </div>
+        <el-card>
+          <log-view :data="taskLog"/>
+        </el-card>
       </el-tab-pane>
       <el-tab-pane :label="$t('Results')" name="results">
+        <div class="button-group">
+          <el-button type="primary" icon="el-icon-download" @click="downloadCSV">
+            {{$t('Download CSV')}}
+          </el-button>
+        </div>
         <general-table-view :data="taskResultsData"
                             :columns="taskResultsColumns"
                             :page-num="resultsPageNum"
                             :page-size="resultsPageSize"
-                            :total="taskResultsTotalCount"/>
+                            :total="taskResultsTotalCount"
+                            @page-change="onResultsPageChange"/>
       </el-tab-pane>
     </el-tabs>
   </div>
@@ -25,28 +29,35 @@
 
 <script>
 import {
-  mapState
+  mapState,
+  mapGetters
 } from 'vuex'
 import TaskOverview from '../../components/Overview/TaskOverview'
 import GeneralTableView from '../../components/TableView/GeneralTableView'
+import LogView from '../../components/ScrollView/LogView'
+import request from '../../api/request'
 
 export default {
   name: 'TaskDetail',
   components: {
+    LogView,
     GeneralTableView,
     TaskOverview
   },
   data () {
     return {
-      activeTabName: 'overview'
+      activeTabName: 'overview',
+      handle: undefined,
+      taskLog: ''
     }
   },
   computed: {
     ...mapState('task', [
-      'taskLog',
       'taskResultsData',
-      'taskResultsColumns',
       'taskResultsTotalCount'
+    ]),
+    ...mapGetters('task', [
+      'taskResultsColumns'
     ]),
     ...mapState('file', [
       'currentPath'
@@ -72,16 +83,41 @@ export default {
     }
   },
   methods: {
-    onTabClick () {
+    onTabClick (tab) {
+      this.$st.sendEv('任务详情', '切换标签', tab.name)
     },
     onSpiderChange (id) {
       this.$router.push(`/spiders/${id}`)
+    },
+    onResultsPageChange (payload) {
+      const { pageNum, pageSize } = payload
+      this.resultsPageNum = pageNum
+      this.resultsPageSize = pageSize
+      this.$store.dispatch('task/getTaskResults', this.$route.params.id)
+    },
+    downloadCSV () {
+      this.$store.dispatch('task/getTaskResultExcel', this.$route.params.id)
+      this.$st.sendEv('任务详情-结果', '下载CSV')
+    },
+    getTaskLog () {
+      if (this.$route.params.id) {
+        request.get(`/tasks/${this.$route.params.id}/log`).then(response => {
+          this.taskLog = response.data.data
+        })
+      }
     }
   },
   created () {
     this.$store.dispatch('task/getTaskData', this.$route.params.id)
-    this.$store.dispatch('task/getTaskLog', this.$route.params.id)
     this.$store.dispatch('task/getTaskResults', this.$route.params.id)
+
+    this.getTaskLog()
+    this.handle = setInterval(() => {
+      this.getTaskLog()
+    }, 5000)
+  },
+  destroyed () {
+    clearInterval(this.handle)
   }
 }
 </script>
@@ -100,5 +136,21 @@ export default {
 
   .selector .el-select {
     padding-left: 10px;
+  }
+
+  .log-view {
+    margin: 20px;
+    height: 640px;
+  }
+
+  .log-view pre {
+    height: 100%;
+    overflow-x: auto;
+    overflow-y: auto;
+  }
+
+  .button-group {
+    margin-bottom: 10px;
+    text-align: right;
   }
 </style>

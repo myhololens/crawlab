@@ -1,5 +1,11 @@
 <template>
   <div class="info-view">
+    <crawl-confirm-dialog
+      :visible="crawlConfirmDialogVisible"
+      :spider-id="spiderForm._id"
+      @close="crawlConfirmDialogVisible = false"
+    />
+
     <el-row>
       <el-form label-width="150px"
                :model="spiderForm"
@@ -10,12 +16,12 @@
           <el-input v-model="spiderForm._id" :placeholder="$t('Spider ID')" disabled></el-input>
         </el-form-item>
         <el-form-item :label="$t('Spider Name')">
-          <el-input v-model="spiderForm.name" :placeholder="$t('Spider Name')" :disabled="isView"></el-input>
+          <el-input v-model="spiderForm.display_name" :placeholder="$t('Spider Name')" :disabled="isView"></el-input>
         </el-form-item>
         <el-form-item :label="$t('Source Folder')">
           <el-input v-model="spiderForm.src" :placeholder="$t('Source Folder')" disabled></el-input>
         </el-form-item>
-        <el-form-item :label="$t('Execute Command')" prop="cmd" required :inline-message="true">
+        <el-form-item  :label="$t('Execute Command')" prop="cmd" required :inline-message="true">
           <el-input v-model="spiderForm.cmd" :placeholder="$t('Execute Command')"
                     :disabled="isView"></el-input>
         </el-form-item>
@@ -23,35 +29,30 @@
           <el-input v-model="spiderForm.col" :placeholder="$t('Results Collection')"
                     :disabled="isView"></el-input>
         </el-form-item>
-        <el-form-item :label="$t('Site')">
+        <el-form-item v-if="false" :label="$t('Site')">
           <el-autocomplete v-model="spiderForm.site"
                            :placeholder="$t('Site')"
                            :fetch-suggestions="fetchSiteSuggestions"
                            clearable
+                           :disabled="isView"
                            @select="onSiteSelect">
           </el-autocomplete>
         </el-form-item>
         <el-form-item :label="$t('Spider Type')">
-          <el-select v-model="spiderForm.type" :placeholder="$t('Spider Type')" :disabled="isView" clearable>
-            <el-option value="scrapy" label="Scrapy"></el-option>
-            <el-option value="pyspider" label="PySpider"></el-option>
-            <el-option value="webmagic" label="WebMagic"></el-option>
-          </el-select>
+          <!--<el-select v-model="spiderForm.type" :placeholder="$t('Spider Type')" :disabled="true" clearable>-->
+            <!--<el-option value="configurable" :label="$t('Configurable')"></el-option>-->
+            <!--<el-option value="customized" :label="$t('Customized')"></el-option>-->
+          <!--</el-select>-->
+          <el-input v-model="spiderForm.type" placeholder="爬虫类型" clearable/>
         </el-form-item>
-        <el-form-item :label="$t('Language')">
-          <el-select v-model="spiderForm.lang" :placeholder="$t('Language')" :disabled="isView" clearable>
-            <el-option value="python" label="Python"></el-option>
-            <el-option value="javascript" label="JavaScript"></el-option>
-            <el-option value="java" label="Java"></el-option>
-            <el-option value="go" label="Go"></el-option>
-          </el-select>
+        <el-form-item :label="$t('Remark')">
+          <el-input v-model="spiderForm.remark"/>
         </el-form-item>
       </el-form>
     </el-row>
     <el-row class="button-container" v-if="!isView">
-      <el-button v-if="isShowRun" type="danger" @click="onRun">{{$t('Run')}}</el-button>
-      <el-button type="primary" @click="onDeploy">{{$t('Deploy')}}</el-button>
-      <el-button type="success" @click="onSave">{{$t('Save')}}</el-button>
+      <el-button size="small" v-if="isShowRun" type="danger" @click="onCrawl">{{$t('Run')}}</el-button>
+      <el-button size="small" type="success" @click="onSave">{{$t('Save')}}</el-button>
     </el-row>
   </div>
 </template>
@@ -60,9 +61,11 @@
 import {
   mapState
 } from 'vuex'
+import CrawlConfirmDialog from '../Common/CrawlConfirmDialog'
 
 export default {
   name: 'SpiderInfoView',
+  components: { CrawlConfirmDialog },
   props: {
     isView: {
       default: false,
@@ -86,6 +89,7 @@ export default {
       callback()
     }
     return {
+      crawlConfirmDialogVisible: false,
       cmdRule: [
         { message: 'Execute Command should not be empty', required: true }
       ],
@@ -99,54 +103,13 @@ export default {
       'spiderForm'
     ]),
     isShowRun () {
-      if (!this.spiderForm.deploy_ts) {
-        return false
-      }
-      if (!this.spiderForm.cmd) {
-        return false
-      }
-      return true
+      return !!this.spiderForm.cmd
     }
   },
   methods: {
-    onRun () {
-      const row = this.spiderForm
-      this.$refs['spiderForm'].validate(res => {
-        if (res) {
-          this.$confirm(this.$t('Are you sure to run this spider?'), this.$t('Notification'), {
-            confirmButtonText: this.$t('Confirm'),
-            cancelButtonText: this.$t('Cancel')
-          })
-            .then(() => {
-              this.$store.dispatch('spider/crawlSpider', row._id)
-                .then(() => {
-                  this.$message.success(this.$t(`Spider task has been scheduled`))
-                })
-            })
-        }
-      })
-    },
-    onDeploy () {
-      const row = this.spiderForm
-
-      // save spider
-      this.$store.dispatch('spider/editSpider', row._id)
-
-      // validate fields
-      this.$refs['spiderForm'].validate(res => {
-        if (res) {
-          this.$confirm(this.$t('Are you sure to deploy this spider?'), this.$t('Notification'), {
-            confirmButtonText: this.$t('Confirm'),
-            cancelButtonText: this.$t('Cancel')
-          })
-            .then(() => {
-              this.$store.dispatch('spider/deploySpider', row._id)
-                .then(() => {
-                  this.$message.success(this.$t(`Spider has been deployed`))
-                })
-            })
-        }
-      })
+    onCrawl () {
+      this.crawlConfirmDialogVisible = true
+      this.$st.sendEv('爬虫详情-概览', '点击运行')
     },
     onSave () {
       this.$refs['spiderForm'].validate(res => {
@@ -160,6 +123,7 @@ export default {
             })
         }
       })
+      this.$st.sendEv('爬虫详情-概览', '保存')
     },
     fetchSiteSuggestions (keyword, callback) {
       this.$request.get('/sites', {

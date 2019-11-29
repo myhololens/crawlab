@@ -10,8 +10,47 @@ import DialogView from './components/Common/DialogView'
 
 export default {
   name: 'App',
+  data () {
+    return {
+      msgPopup: undefined
+    }
+  },
   components: {
     DialogView
+  },
+  computed: {
+    useStats () {
+      return localStorage.getItem('useStats')
+    }
+  },
+  methods: {},
+  mounted () {
+    window.setUseStats = (value) => {
+      localStorage.setItem('useStats', value)
+      document.querySelector('.el-message__closeBtn').click()
+      if (value === 1) {
+        this.$st.sendPv('/allow_stats')
+        this.$st.sendEv('全局', '允许/禁止统计', 'value', 'allow')
+      } else {
+        this.$st.sendPv('/disallow_stats')
+        this.$st.sendEv('全局', '允许/禁止统计', 'value', 'disallow')
+      }
+    }
+
+    // first-time user
+    if (this.useStats === undefined || this.useStats === null) {
+      this.$message({
+        type: 'info',
+        dangerouslyUseHTMLString: true,
+        showClose: true,
+        duration: 0,
+        message: '<p>' + this.$t('Do you allow us to collect some statistics to improve Crawlab?') + '</p>' +
+          '<div style="text-align: center;margin-top: 10px;">' +
+          '<button class="message-btn" onclick="setUseStats(1)">' + this.$t('Yes') + '</button>' +
+          '<button class="message-btn" onclick="setUseStats(0)">' + this.$t('No') + '</button>' +
+          '</div>'
+      })
+    }
   }
 }
 </script>
@@ -51,5 +90,33 @@ export default {
 
   .el-form .el-form-item {
     margin-bottom: 10px;
+  }
+
+  .message-btn {
+    margin: 0 5px;
+    padding: 5px 10px;
+    background: transparent;
+    color: #909399;
+    font-size: 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid #909399;
+  }
+
+  .message-btn:hover {
+    opacity: 0.8;
+    text-decoration: underline;
+  }
+
+  .message-btn.success {
+    background: #67c23a;
+    border-color: #67c23a;
+    color: #fff;
+  }
+
+  .message-btn.danger {
+    background: #f56c6c;
+    border-color: #f56c6c;
+    color: #fff;
   }
 </style>

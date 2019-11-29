@@ -2,16 +2,16 @@
   <div class="tags-view-container">
     <scroll-pane ref="scrollPane" class="tags-view-wrapper">
       <router-link
-          v-for="tag in visitedViews"
-          ref="tag"
-          :class="isActive(tag)?'active':''"
-          :to="{ path: tag.path, query: tag.query, fullPath: tag.fullPath }"
-          :key="tag.path"
-          tag="span"
-          class="tags-view-item"
-          @click.middle.native="closeSelectedTag(tag)"
-          @contextmenu.prevent.native="openMenu(tag,$event)">
-        {{ generateTitle(tag.title) }}
+        v-for="tag in visitedViews"
+        ref="tag"
+        :class="isActive(tag)?'active':''"
+        :to="{ path: tag.path, query: tag.query, fullPath: tag.fullPath }"
+        :key="tag.path"
+        tag="span"
+        class="tags-view-item"
+        @click.middle.native="closeSelectedTag(tag)"
+        @contextmenu.prevent.native="openMenu(tag,$event)">
+        {{ $t(generateTitle(tag.title)) }}
         <span v-if="!tag.meta.affix" class="el-icon-close" @click.prevent.stop="closeSelectedTag(tag)"/>
       </router-link>
     </scroll-pane>
@@ -47,7 +47,7 @@ export default {
       return this.$store.state.tagsView.visitedViews
     },
     routers () {
-      return this.$store.state.permission.routers
+      return this.$store.state.permission ? this.$store.state.permission.routers : []
     }
   },
   watch: {
@@ -110,20 +110,22 @@ export default {
     },
     moveToCurrentTag () {
       const tags = this.$refs.tag
-      this.$nextTick(() => {
-        for (const tag of tags) {
-          if (tag.to.path === this.$route.path) {
-            this.$refs.scrollPane.moveToTarget(tag)
+      if (tags) {
+        this.$nextTick(() => {
+          for (const tag of tags) {
+            if (tag.to.path === this.$route.path) {
+              this.$refs.scrollPane.moveToTarget(tag)
 
-            // when query is different then update
-            if (tag.to.fullPath !== this.$route.fullPath) {
-              this.$store.dispatch('updateVisitedView', this.$route)
+              // when query is different then update
+              if (tag.to.fullPath !== this.$route.fullPath) {
+                this.$store.dispatch('updateVisitedView', this.$route)
+              }
+
+              break
             }
-
-            break
           }
-        }
-      })
+        })
+      }
     },
     refreshSelectedTag (view) {
       this.$store.dispatch('delCachedView', view).then(() => {

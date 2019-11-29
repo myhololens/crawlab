@@ -1,0 +1,34 @@
+api:
+  address: "localhost:8000"
+mongo:
+  host: localhost
+  port: 27017
+  db: crawlab_test
+  username: ""
+  password: ""
+  authSource: "admin"
+redis:
+  address: localhost
+  password: ""
+  database: 1
+  port: 6379
+log:
+  level: info
+  path: "/var/logs/crawlab"
+  isDeletePeriodically: "Y"
+  deleteFrequency: "@hourly"
+server:
+  host: 0.0.0.0
+  port: 8000
+  master: "N"
+  secret: "crawlab"
+  register:
+    # mac地址 或者 ip地址，如果是ip，则需要手动指定IP
+    type: "mac"
+    ip: ""
+spider:
+  path: "/app/spiders"
+task:
+  workers: 4
+other:
+  tmppath: "/tmp"

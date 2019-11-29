@@ -1,118 +1,172 @@
 # Crawlab
-基于Celery的爬虫分布式爬虫管理平台，支持多种编程语言以及多种爬虫框架.
 
-[查看演示 Demo](http://139.129.230.98:8080)
+![](http://114.67.75.98:8082/buildStatus/icon?job=crawlab%2Fmaster)
+![](https://img.shields.io/github/release/crawlab-team/crawlab.svg)
+![](https://img.shields.io/github/last-commit/crawlab-team/crawlab.svg)
+![](https://img.shields.io/github/issues/crawlab-team/crawlab.svg)
+![](https://img.shields.io/github/contributors/crawlab-team/crawlab.svg)
+![](https://img.shields.io/docker/pulls/tikazyq/crawlab)
+![](https://img.shields.io/github/license/crawlab-team/crawlab.svg)
 
-[English Documentation](https://github.com/tikazyq/crawlab/blob/master/README.md)
+中文 | [English](https://github.com/crawlab-team/crawlab)
 
-## 要求
-- Python3
-- MongoDB
-- Redis
+[安装](#安装) | [运行](#运行) | [截图](#截图) | [架构](#架构) | [集成](#与其他框架的集成) | [比较](#与其他框架比较) | [相关文章](#相关文章) | [社区&赞助](#社区--赞助)
+
+基于Golang的分布式爬虫管理平台，支持Python、NodeJS、Go、Java、PHP等多种编程语言以及多种爬虫框架。
+
+[查看演示 Demo](http://crawlab.cn/demo) | [文档](https://tikazyq.github.io/crawlab-docs)
 
 ## 安装
 
-```bash
-# 安装后台类库
-pip install -r requirements.txt
+三种方式:
+1. [Docker](https://tikazyq.github.io/crawlab-docs/Installation/Docker.html)（推荐）
+2. [直接部署](https://tikazyq.github.io/crawlab-docs/Installation/Direct.html)（了解内核）
+3. [Kubernetes](https://mp.weixin.qq.com/s/3Q1BQATUIEE_WXcHPqhYbA)
+
+### 要求（Docker）
+- Docker 18.03+
+- Redis
+- MongoDB 3.6+
+
+### 要求（直接部署）
+- Go 1.12+
+- Node 8.12+
+- Redis
+- MongoDB 3.6+
+
+## 运行
+
+### Docker
+
+请用`docker-compose`来一键启动，甚至不用配置MongoDB和Redis数据库，**当然我们推荐这样做**。在当前目录中创建`docker-compose.yml`文件，输入以下内容。
+
+```yaml
+version: '3.3'
+services:
+  master: 
+    image: tikazyq/crawlab:latest
+    container_name: master
+    environment:
+      CRAWLAB_API_ADDRESS: "http://localhost:8000"
+      CRAWLAB_SERVER_MASTER: "Y"
+      CRAWLAB_MONGO_HOST: "mongo"
+      CRAWLAB_REDIS_ADDRESS: "redis"
+    ports:    
+      - "8080:8080" # frontend
+      - "8000:8000" # backend
+    depends_on:
+      - mongo
+      - redis
+  mongo:
+    image: mongo:latest
+    restart: always
+    ports:
+      - "27017:27017"
+  redis:
+    image: redis:latest
+    restart: always
+    ports:
+      - "6379:6379"
 ```
 
-```bash
-# 安装前台类库
-cd frontend
-npm install
-```
-
-## 配置
-
-请更改配置文件`config.py`，配置API和数据库连接.
-
-## 快速开始
-```bash
-# 启动后端API
-python app.py
-
-# 启动Flower服务
-python ./bin/run_flower.py
-
-# 启动worker
-python ./bin/run_worker.py
-```
+然后执行以下命令，Crawlab主节点＋MongoDB＋Redis就启动了。打开`http://localhost:8080`就能看到界面。
 
 ```bash
-# 运行前端
-cd frontend
-npm run serve
+docker-compose up
 ```
+
+Docker部署的详情，请见[相关文档](https://tikazyq.github.io/crawlab-docs/Installation/Docker.html)。
+
+### 直接部署
+
+请参考[相关文档](https://tikazyq.github.io/crawlab-docs/Installation/Direct.html)。
 
 ## 截图
 
+#### 登录
+
+![](https://raw.githubusercontent.com/tikazyq/crawlab-docs/master/images/login.png)
+
 #### 首页
-![home](./docs/img/screenshot-home.png)
+
+![](https://raw.githubusercontent.com/tikazyq/crawlab-docs/master/images/home.png)
+
+#### 节点列表
+
+![](https://raw.githubusercontent.com/tikazyq/crawlab-docs/master/images/node-list.png)
+
+#### 节点拓扑图
+
+![](https://raw.githubusercontent.com/tikazyq/crawlab-docs/master/images/node-network.png)
 
 #### 爬虫列表
 
-![spider-list](./docs/img/screenshot-spiders.png)
+![](https://raw.githubusercontent.com/tikazyq/crawlab-docs/master/images/spider-list.png)
 
-#### 爬虫详情 - 概览
+#### 爬虫概览
 
-![spider-list](./docs/img/screenshot-spider-detail-overview.png)
+![](https://raw.githubusercontent.com/tikazyq/crawlab-docs/master/images/spider-overview.png)
+
+#### 爬虫分析
+
+![](https://raw.githubusercontent.com/tikazyq/crawlab-docs/master/images/spider-analytics.png)
+
+#### 爬虫文件
+
+![](https://raw.githubusercontent.com/tikazyq/crawlab-docs/master/images/spider-file.png)
 
 #### 任务详情 - 抓取结果
 
-![spider-list](./docs/img/screenshot-task-detail-results.png)
+![](https://raw.githubusercontent.com/tikazyq/crawlab-docs/master/images/task-results.png)
 
-## 使用流程
+#### 定时任务
 
-![user-process](./docs/img/用户使用流程图.png)
+![](https://raw.githubusercontent.com/tikazyq/crawlab-docs/master/images/schedule.png)
 
 ## 架构
 
-Crawlab的架构跟Celery非常相似，但是加入了包括前端、爬虫、Flower在内的额外模块，以支持爬虫管理的功能。
+Crawlab的架构包括了一个主节点（Master Node）和多个工作节点（Worker Node），以及负责通信和数据储存的Redis和MongoDB数据库。
 
-![crawlab-architecture](./docs/img/crawlab-architecture.png)
+![](https://raw.githubusercontent.com/tikazyq/crawlab-docs/master/images/architecture.png)
 
-### 节点
+前端应用向主节点请求数据，主节点通过MongoDB和Redis来执行任务派发调度以及部署，工作节点收到任务之后，开始执行爬虫任务，并将任务结果储存到MongoDB。架构相对于`v0.3.0`之前的Celery版本有所精简，去除了不必要的节点监控模块Flower，节点监控主要由Redis完成。
 
-节点其实就是Celery中的Worker。一个节点运行时会连接到一个任务队列（例如Redis）来接收和运行任务。所有爬虫需要在运行时被部署到节点上，用户在部署前需要定义节点的IP地址和端口。
+### 主节点
 
-### 爬虫
+主节点是整个Crawlab架构的核心，属于Crawlab的中控系统。
 
-##### 自动发现
+主节点主要负责以下功能:
+1. 爬虫任务调度
+2. 工作节点管理和通信
+3. 爬虫部署
+4. 前端以及API服务
+5. 执行任务（可以将主节点当成工作节点）
 
-在`config.py`文件中，修改变量`PROJECT_SOURCE_FILE_FOLDER`作为爬虫项目所在的目录。Crawlab后台程序会自动发现这些爬虫项目并储存到数据库中。是不是很方便？
+主节点负责与前端应用进行通信，并通过Redis将爬虫任务派发给工作节点。同时，主节点会同步（部署）爬虫给工作节点，通过Redis和MongoDB的GridFS。
 
-##### 部署爬虫
+### 工作节点
 
-所有爬虫需要在抓取前被部署当相应当节点中。在"爬虫详情"页面点击"Deploy"按钮，爬虫将被部署到所有有效到节点中。
+工作节点的主要功能是执行爬虫任务和储存抓取数据与日志，并且通过Redis的`PubSub`跟主节点通信。通过增加工作节点数量，Crawlab可以做到横向扩展，不同的爬虫任务可以分配到不同的节点上执行。
 
-##### 运行爬虫
+### MongoDB
 
-部署爬虫之后，你可以在"爬虫详情"页面点击"Run"按钮来启动爬虫。一个爬虫任务将被触发，你可以在任务列表页面中看到这个任务。
+MongoDB是Crawlab的运行数据库，储存有节点、爬虫、任务、定时任务等数据，另外GridFS文件储存方式是主节点储存爬虫文件并同步到工作节点的中间媒介。
 
-### 任务
+### Redis
 
-任务被触发并被节点执行。用户可以在任务详情页面中看到任务到状态、日志和抓取结果。
-
-### 后台应用
-
-这是一个Flask应用，提供了必要的API来支持常规操作，例如CRUD、爬虫部署以及任务运行。每一个节点需要启动Flask应用来支持爬虫部署。运行`python manage.py app`或`python ./bin/run_app.py`来启动应用。
-
-### 中间者
-
-中间者跟Celery中定义的一样，作为运行异步任务的队列。
+Redis是非常受欢迎的Key-Value数据库，在Crawlab中主要实现节点间数据通信的功能。例如，节点会将自己信息通过`HSET`储存在Redis的`nodes`哈希列表中，主节点根据哈希列表来判断在线节点。
 
 ### 前端
 
-前端其实就是一个基于[Vue-Element-Admin](https://github.com/PanJiaChen/vue-element-admin)的单页应用。其中重用了很多Element-UI的控件来支持相应的展示。
+前端是一个基于[Vue-Element-Admin](https://github.com/PanJiaChen/vue-element-admin)的单页应用。其中重用了很多Element-UI的控件来支持相应的展示。
 
 ## 与其他框架的集成
 
-任务是利用python的`subprocess`模块中的`Popen`来实现的。任务ID将以环境变量`CRAWLAB_TASK_ID`的形式存在于爬虫任务运行的进程中，并以此来关联抓取数据。
+爬虫任务本质上是由一个shell命令来实现的。任务ID将以环境变量`CRAWLAB_TASK_ID`的形式存在于爬虫任务运行的进程中，并以此来关联抓取数据。另外，`CRAWLAB_COLLECTION`是Crawlab传过来的所存放collection的名称。
 
-在你的爬虫程序中，你需要将`CRAWLAB_TASK_ID`的值以`task_id`作为可以存入数据库中。这样Crawlab就直到如何将爬虫任务与抓取数据关联起来了。当前，Crawlab只支持MongoDB。
+在爬虫程序中，需要将`CRAWLAB_TASK_ID`的值以`task_id`作为可以存入数据库中`CRAWLAB_COLLECTION`的collection中。这样Crawlab就知道如何将爬虫任务与抓取数据关联起来了。当前，Crawlab只支持MongoDB。
 
-### Scrapy
+### 集成Scrapy
 
 以下是Crawlab跟Scrapy集成的例子，利用了Crawlab传过来的task_id和collection_name。
 
@@ -149,27 +203,63 @@ Crawlab使用起来很方便，也很通用，可以适用于几乎任何主流�
 
 |框架 | 类型 | 分布式 | 前端 | 依赖于Scrapyd |
 |:---:|:---:|:---:|:---:|:---:|
-| [Crawlab](https://github.com/tikazyq/crawlab) | 管理平台 | Y | Y | N
-| [Gerapy](https://github.com/Gerapy/Gerapy) | 管理平台 | Y | Y | Y
-| [SpiderKeeper](https://github.com/DormyMo/SpiderKeeper) | 管理平台 | Y | Y | Y
+| [Crawlab](https://github.com/crawlab-team/crawlab) | 管理平台 | Y | Y | N
 | [ScrapydWeb](https://github.com/my8100/scrapydweb) | 管理平台 | Y | Y | Y
+| [SpiderKeeper](https://github.com/DormyMo/SpiderKeeper) | 管理平台 | Y | Y | Y
+| [Gerapy](https://github.com/Gerapy/Gerapy) | 管理平台 | Y | Y | Y
 | [Scrapyd](https://github.com/scrapy/scrapyd) | 网络服务 | Y | N | N/A
 
-## TODOs
-##### 后端
-- [ ] 文件管理
-- [ ] MySQL数据库支持
-- [ ] 重跑任务
-- [ ] 节点监控
-- [ ] 更多爬虫例子
+## Q&A
 
-##### 前端
-- [x] 任务数据统计
-- [x] 表格过滤
-- [x] 多语言支持 (中文)
-- [ ] 登录和用户管理
-- [ ] 全局搜索
+#### 1. 为何我访问 http://localhost:8080 提示访问不了？
 
-如果您喜欢Crawlab或者希望贡献开发它，请加作者微信 tikazyq1 并注明"Crawlab"，作者会将你拉入群。
+假如您是Docker部署的，请检查一下您是否用了Docker Machine，这样的话您需要输入地址 http://192.168.99.100:8080 才行。
 
-![](https://user-gold-cdn.xitu.io/2019/3/15/169814cbd5e600e9?imageslim)
+另外，请确保您用了`-p 8080:8080`来映射端口，并检查宿主机是否开放了8080端口。
+
+#### 2. 我可以看到登录页面了，但为何我点击登陆的时候按钮一直转圈圈？
+
+绝大多数情况下，您可能是没有正确配置`CRAWLAB_API_ADDRESS`这个环境变量。这个变量是告诉前端应该通过哪个地址来请求API数据的，因此需要将它设置为宿主机的IP地址＋端口，例如 `192.168.0.1:8000`。接着，重启容器，在浏览器中输入宿主机IP＋端口，就可以顺利登陆了。
+
+请注意，8080是前端端口，8000是后端端口，您在浏览器中只需要输入前端的地址就可以了，要注意区分。
+
+#### 3. 在爬虫页面有一些不认识的爬虫列表，这些是什么呢？
+
+这些是demo爬虫，如果需要添加您自己的爬虫，请将您的爬虫文件打包成zip文件，再在爬虫页面中点击**添加爬虫**上传就可以了。
+
+注意，Crawlab将取文件名作为爬虫名称，这个您可以后期更改。另外，请不要将zip文件名设置为中文，可能会导致上传不成功。
+
+## 相关文章
+
+- [爬虫管理平台Crawlab v0.3.0发布(Golang版本)](https://juejin.im/post/5d418deff265da03c926d75c)
+- [爬虫平台Crawlab核心原理--分布式架构](https://juejin.im/post/5d4ba9d1e51d4561cf15df79)
+- [爬虫平台Crawlab核心原理--自动提取字段算法](https://juejin.im/post/5cf4a7fa5188254c5879facd)
+- [爬虫管理平台Crawlab部署指南（Docker and more）](https://juejin.im/post/5d01027a518825142939320f)
+- [[爬虫手记] 我是如何在3分钟内开发完一个爬虫的](https://juejin.im/post/5ceb4342f265da1bc8540660)
+- [手把手教你如何用Crawlab构建技术文章聚合平台(二)](https://juejin.im/post/5c92365d6fb9a070c5510e71)
+- [手把手教你如何用Crawlab构建技术文章聚合平台(一)](https://juejin.im/user/5a1ba6def265da430b7af463/posts)
+
+**注意: v0.3.0版本已将基于Celery的Python版本切换为了Golang版本，如何部署请参照文档**
+
+## 贡献者
+<a href="https://github.com/tikazyq">
+  <img src="https://avatars3.githubusercontent.com/u/3393101?s=460&v=4" height="80">
+</a>
+<a href="https://github.com/wo10378931">
+  <img src="https://avatars2.githubusercontent.com/u/8297691?s=460&v=4" height="80">
+</a>
+<a href="https://github.com/yaziming">
+  <img src="https://avatars2.githubusercontent.com/u/54052849?s=460&v=4" height="80">
+</a>
+<a href="https://github.com/hantmac">
+  <img src="https://avatars2.githubusercontent.com/u/7600925?s=460&v=4" height="80">
+</a>
+
+## 社区 & 赞助
+
+如果您觉得Crawlab对您的日常开发或公司有帮助，请加作者微信 tikazyq1 并注明"Crawlab"，作者会将你拉入群。或者，您可以扫下方支付宝二维码给作者打赏去升级团队协作软件或买一杯咖啡。
+
+<p align="center">
+    <img src="https://crawlab.oss-cn-hangzhou.aliyuncs.com/gitbook/qrcode.png" height="360">
+    <img src="https://crawlab.oss-cn-hangzhou.aliyuncs.com/gitbook/payment.jpg" height="360">
+</p>

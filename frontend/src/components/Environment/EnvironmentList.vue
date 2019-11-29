@@ -2,8 +2,8 @@
   <div class="environment-list">
     <el-row>
       <div class="button-group">
-        <el-button type="primary" @click="addEnv" icon="el-icon-plus">{{$t('Add Environment Variables')}}</el-button>
-        <el-button type="success" @click="save">{{$t('Save')}}</el-button>
+        <el-button size="small" type="primary" @click="addEnv" icon="el-icon-plus">{{$t('Add Environment Variables')}}</el-button>
+        <el-button size="small" type="success" @click="save">{{$t('Save')}}</el-button>
       </div>
     </el-row>
     <el-row>
@@ -49,19 +49,21 @@ export default {
         name: '',
         value: ''
       })
-      console.log(this.spiderForm)
+      this.$st.sendEv('爬虫详情-环境', '添加')
     },
     deleteEnv (index) {
       this.spiderForm.envs.splice(index, 1)
+      this.$st.sendEv('爬虫详情-环境', '删除')
     },
     save () {
-      this.$store.dispatch('spider/updateSpiderEnvs')
+      this.$store.dispatch('spider/editSpider')
         .then(() => {
           this.$message.success(this.$t('Spider info has been saved successfully'))
         })
         .catch(error => {
           this.$message.error(error)
         })
+      this.$st.sendEv('爬虫详情-环境', '保存')
     }
   }
 }
@@ -71,5 +73,9 @@ export default {
   .button-group {
     width: 100%;
     text-align: right;
+  }
+
+  .el-table {
+    min-height: 360px;
   }
 </style>

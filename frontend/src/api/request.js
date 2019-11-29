@@ -1,24 +1,53 @@
 import axios from 'axios'
+import router from '../router'
 
-let baseUrl = 'http://localhost:8000/api'
-if (process.env.NODE_ENV === 'production') {
-  baseUrl = 'http://139.129.230.98:8000/api'
-}
-// console.log(process.env)
-// const baseUrl = process.env.API_BASE_URL || 'http://localhost:8000/api'
+let baseUrl = process.env.VUE_APP_BASE_URL ? process.env.VUE_APP_BASE_URL : 'http://localhost:8000'
 
-const request = (method, path, params, data) => {
-  return new Promise((resolve, reject) => {
-    const url = `${baseUrl}${path}`
-    axios({
+const request = async (method, path, params, data, others = {}) => {
+  try {
+    const url = baseUrl + path
+    const headers = {
+      'Authorization': window.localStorage.getItem('token')
+    }
+    const response = await axios({
       method,
       url,
       params,
-      data
+      data,
+      headers,
+      ...others
     })
-      .then(resolve)
-      .catch(reject)
-  })
+    // console.log(response)
+    return response
+  } catch (e) {
+    if (e.response.status === 401 && router.currentRoute.path !== '/login') {
+      router.push('/login')
+    }
+    await Promise.reject(e)
+  }
+
+  // return new Promise((resolve, reject) => {
+  //   const url = baseUrl + path
+  //   const headers = {
+  //     'Authorization': window.localStorage.getItem('token')
+  //   }
+  //   axios({
+  //     method,
+  //     url,
+  //     params,
+  //     data,
+  //     headers,
+  //     ...others
+  //   })
+  //     .then(resolve)
+  //     .catch(error => {
+  //       console.log(error)
+  //       if (error.response.status === 401) {
+  //         router.push('/login')
+  //       }
+  //       reject(error)
+  //     })
+  // })
 }
 
 const get = (path, params) => {

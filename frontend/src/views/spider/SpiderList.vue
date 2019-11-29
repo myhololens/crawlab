@@ -1,6 +1,6 @@
 <template>
   <div class="app-container">
-    <!--add popup-->
+    <!--import popup-->
     <el-dialog
       :title="$t('Import Spider')"
       :visible.sync="dialogVisible"
@@ -26,182 +26,315 @@
         <el-button v-loading="importLoading" type="primary" @click="onImport">{{$t('Import')}}</el-button>
       </span>
     </el-dialog>
+    <!--./import popup-->
 
-    <!--filter-->
-    <div class="filter">
-      <el-input prefix-icon="el-icon-search"
-                :placeholder="$t('Search')"
-                class="filter-search"
-                v-model="filter.keyword"
-                @change="onSearch">
-      </el-input>
-      <div class="right">
-        <el-button type="primary" icon="fa fa-cloud" @click="onDeployAll">
-          {{$t('Deploy All')}}
-        </el-button>
-        <el-button type="primary" icon="fa fa-download" @click="openImportDialog">
-          {{$t('Import Spiders')}}
-        </el-button>
-        <el-button type="success"
-                   icon="el-icon-refresh"
-                   class="btn refresh"
-                   @click="onRefresh">
-          {{$t('Refresh')}}
-        </el-button>
+    <!--add dialog-->
+    <el-dialog :title="$t('Add Spider')"
+               width="40%"
+               :visible.sync="addDialogVisible"
+               :before-close="onAddDialogClose">
+      <div class="add-spider-wrapper">
+        <div @click="onAddConfigurable">
+          <el-card shadow="hover" class="add-spider-item success">
+            {{$t('Configurable Spider')}}
+          </el-card>
+        </div>
+        <div @click="onAddCustomized">
+          <el-card shadow="hover" class="add-spider-item primary">
+            {{$t('Customized Spider')}}
+          </el-card>
+        </div>
       </div>
-    </div>
+    </el-dialog>
+    <!--./add dialog-->
 
-    <!--table list-->
-    <el-table :data="filteredTableData"
-              class="table"
-              :header-cell-style="{background:'rgb(48, 65, 86)',color:'white'}"
-              border>
-      <template v-for="col in columns">
-        <el-table-column v-if="col.name === 'type'"
-                         :key="col.name"
-                         :label="$t(col.label)"
-                         :sortable="col.sortable"
-                         align="center"
-                         :width="col.width">
-          <template slot-scope="scope">
-            <el-tag v-if="scope.row.type === 'scrapy'">Scrapy</el-tag>
-            <el-tag type="warning" v-else-if="scope.row.type === 'pyspider'">PySpider</el-tag>
-            <el-tag type="info" v-else-if="scope.row.type === 'webmagic'">WebMagic</el-tag>
-            <el-tag type="success" v-else-if="scope.row.type">{{scope.row.type}}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column v-else-if="col.name === 'lang'"
-                         :key="col.name"
-                         :label="$t(col.label)"
-                         :sortable="col.sortable"
-                         align="center"
-                         :width="col.width">
-          <template slot-scope="scope">
-            <el-tag type="warning" v-if="scope.row.lang === 'python'">Python</el-tag>
-            <el-tag type="primary" v-else-if="scope.row.lang === 'javascript'">JavaScript</el-tag>
-            <el-tag type="info" v-else-if="scope.row.lang === 'java'">Java</el-tag>
-            <el-tag type="danger" v-else-if="scope.row.lang === 'go'">Go</el-tag>
-            <el-tag type="success" v-else-if="scope.row.lang">{{scope.row.lang}}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column v-else-if="col.name === 'last_5_errors'"
-                         :key="col.name"
-                         :label="$t(col.label)"
-                         :width="col.width"
-                         align="center">
-          <template slot-scope="scope">
-            <div :style="{color:scope.row[col.name]>0?'red':''}">
-              {{scope.row[col.name]}}
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column v-else
-                         :key="col.name"
-                         :property="col.name"
-                         :label="$t(col.label)"
-                         :sortable="col.sortable"
-                         align="center"
-                         :width="col.width">
-        </el-table-column>
-      </template>
-      <el-table-column :label="$t('Action')" align="left" width="200">
-        <template slot-scope="scope">
-          <el-tooltip :content="$t('View')" placement="top">
-            <el-button type="primary" icon="el-icon-search" size="mini" @click="onView(scope.row)"></el-button>
-          </el-tooltip>
-          <!--<el-tooltip :content="$t('Edit')" placement="top">-->
-          <!--<el-button type="warning" icon="el-icon-edit" size="mini" @click="onView(scope.row)"></el-button>-->
-          <!--</el-tooltip>-->
-          <el-tooltip :content="$t('Remove')" placement="top">
-            <el-button type="danger" icon="el-icon-delete" size="mini" @click="onRemove(scope.row)"></el-button>
-          </el-tooltip>
-          <el-tooltip :content="$t('Deploy')" placement="top">
-            <el-button type="primary" icon="fa fa-cloud" size="mini" @click="onDeploy(scope.row)"></el-button>
-          </el-tooltip>
-          <el-tooltip v-if="isShowRun(scope.row)" :content="$t('Run')" placement="top">
-            <el-button type="success" icon="fa fa-bug" size="mini" @click="onCrawl(scope.row)"></el-button>
-          </el-tooltip>
+    <!--configurable spider dialog-->
+    <el-dialog :title="$t('Add Configurable Spider')"
+               width="40%"
+               :visible.sync="addConfigurableDialogVisible"
+               :before-close="onAddConfigurableDialogClose">
+      <el-form :model="spiderForm" ref="addConfigurableForm" inline-message>
+        <el-form-item :label="$t('Spider Name')" label-width="120px" prop="name" required>
+          <el-input :placeholder="$t('Spider Name')" v-model="spiderForm.name"></el-input>
+        </el-form-item>
+        <el-form-item :label="$t('Results Collection')" label-width="120px" name="col">
+          <el-input :placeholder="$t('Results Collection')" v-model="spiderForm.col"></el-input>
+        </el-form-item>
+        <el-form-item :label="$t('Site')" label-width="120px" name="site">
+          <el-autocomplete v-model="spiderForm.site"
+                           :placeholder="$t('Site')"
+                           :fetch-suggestions="fetchSiteSuggestions"
+                           @select="onAddConfigurableSiteSelect">
+          </el-autocomplete>
+        </el-form-item>
+      </el-form>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="addConfigurableDialogVisible = false">{{$t('Cancel')}}</el-button>
+        <el-button v-loading="addConfigurableLoading" type="primary"
+                   @click="onAddConfigurableSpider">{{$t('Add')}}</el-button>
+      </span>
+    </el-dialog>
+    <!--./configurable spider dialog-->
+
+    <!--customized spider dialog-->
+    <el-dialog :title="$t('Add Customized Spider')"
+               width="40%"
+               :visible.sync="addCustomizedDialogVisible"
+               :before-close="onAddCustomizedDialogClose">
+      <el-form :model="spiderForm" ref="addConfigurableForm" inline-message>
+        <el-form-item :label="$t('Upload Zip File')" label-width="120px" name="site">
+          <el-upload
+            :action="$request.baseUrl + '/spiders'"
+            :headers="{Authorization:token}"
+            :on-change="onUploadChange"
+            :on-success="onUploadSuccess"
+            :file-list="fileList">
+            <el-button size="small" type="primary" icon="el-icon-upload">{{$t('Upload')}}</el-button>
+          </el-upload>
+        </el-form-item>
+      </el-form>
+      <el-alert type="error" :title="$t('Please zip your spider files from the root directory')" :closable="false"></el-alert>
+    </el-dialog>
+    <!--./customized spider dialog-->
+
+    <!--crawl confirm dialog-->
+    <crawl-confirm-dialog
+      :visible="crawlConfirmDialogVisible"
+      :spider-id="activeSpiderId"
+      @close="crawlConfirmDialogVisible = false"
+    />
+    <!--./crawl confirm dialog-->
+
+    <el-card style="border-radius: 0">
+      <!--filter-->
+      <div class="filter">
+        <div class="left">
+          <el-form :inline="true">
+            <el-form-item>
+              <el-select clearable @change="onSpiderTypeChange" placeholder="爬虫类型" size="small" v-model="filter.type">
+                <el-option v-for="item in types" :value="item.type" :key="item.type"
+                           :label="item.type === 'customized'? '自定义':item.type "/>
+              </el-select>
+            </el-form-item>
+            <el-form-item>
+              <el-input clearable @keyup.enter.native="onSearch" size="small" placeholder="名称" v-model="filter.keyword">
+                <i slot="suffix" class="el-input__icon el-icon-search"></i>
+              </el-input>
+            </el-form-item>
+          </el-form>
+        </div>
+        <div class="right">
+          <el-button size="small" v-if="false" type="primary" icon="fa fa-download" @click="openImportDialog">
+            {{$t('Import Spiders')}}
+          </el-button>
+          <el-button size="small" type="success"
+                     icon="el-icon-plus"
+                     class="btn add"
+                     @click="onAdd">
+            {{$t('Add Spider')}}
+          </el-button>
+          <el-button size="small" type="success"
+                     icon="el-icon-refresh"
+                     class="btn refresh"
+                     @click="onRefresh">
+            {{$t('Refresh')}}
+          </el-button>
+        </div>
+      </div>
+      <!--./filter-->
+
+      <!--table list-->
+      <el-table :data="spiderList"
+                class="table"
+                :header-cell-style="{background:'rgb(48, 65, 86)',color:'white'}"
+                border
+                @row-click="onRowClick"
+      >
+        <template v-for="col in columns">
+          <el-table-column v-if="col.name === 'type'"
+                           :key="col.name"
+                           :label="$t(col.label)"
+                           align="left"
+                           :width="col.width">
+            <template slot-scope="scope">
+              {{scope.row.type === 'customized' ? '自定义' : scope.row.type}}
+            </template>
+          </el-table-column>
+          <el-table-column v-else-if="col.name === 'last_5_errors'"
+                           :key="col.name"
+                           :label="$t(col.label)"
+                           :width="col.width"
+                           align="center">
+            <template slot-scope="scope">
+              <div :style="{color:scope.row[col.name]>0?'red':''}">
+                {{scope.row[col.name]}}
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column v-else-if="col.name === 'cmd'"
+                           :key="col.name"
+                           :label="$t(col.label)"
+                           :width="col.width"
+                           align="left">
+            <template slot-scope="scope">
+              <el-input v-model="scope.row[col.name]"></el-input>
+            </template>
+          </el-table-column>
+          <el-table-column v-else-if="col.name.match(/_ts$/)"
+                           :key="col.name"
+                           :label="$t(col.label)"
+                           :sortable="col.sortable"
+                           :align="col.align"
+                           :width="col.width">
+            <template slot-scope="scope">
+              {{getTime(scope.row[col.name])}}
+            </template>
+          </el-table-column>
+          <el-table-column v-else-if="col.name === 'last_status'"
+                           :key="col.name"
+                           :label="$t(col.label)"
+                           align="left" :width="col.width">
+            <template slot-scope="scope">
+              <status-tag :status="scope.row.last_status"/>
+            </template>
+          </el-table-column>
+          <el-table-column v-else
+                           :key="col.name"
+                           :property="col.name"
+                           :label="$t(col.label)"
+                           :sortable="col.sortable"
+                           :align="col.align || 'left'"
+                           :width="col.width">
+          </el-table-column>
         </template>
-      </el-table-column>
-    </el-table>
-    <div class="pagination">
-      <el-pagination
-        @current-change="onPageChange"
-        @size-change="onPageChange"
-        :current-page.sync="pagination.pageNum"
-        :page-sizes="[10, 20, 50, 100]"
-        :page-size.sync="pagination.pageSize"
-        layout="sizes, prev, pager, next"
-        :total="spiderList.length">
-      </el-pagination>
-    </div>
+        <el-table-column :label="$t('Action')" align="left" fixed="right">
+          <template slot-scope="scope">
+            <el-tooltip :content="$t('View')" placement="top">
+              <el-button type="primary" icon="el-icon-search" size="mini" @click="onView(scope.row)"></el-button>
+            </el-tooltip>
+            <el-tooltip :content="$t('Remove')" placement="top">
+              <el-button type="danger" icon="el-icon-delete" size="mini" @click="onRemove(scope.row)"></el-button>
+            </el-tooltip>
+            <el-tooltip v-if="!isShowRun(scope.row)" :content="$t('No command line')" placement="top">
+              <el-button disabled type="success" icon="fa fa-bug" size="mini" @click="onCrawl(scope.row)"></el-button>
+            </el-tooltip>
+            <el-tooltip v-else :content="$t('Run')" placement="top">
+              <el-button type="success" icon="fa fa-bug" size="mini" @click="onCrawl(scope.row)"></el-button>
+            </el-tooltip>
+          </template>
+        </el-table-column>
+      </el-table>
+      <div class="pagination">
+        <el-pagination
+          @current-change="onPageNumChange"
+          @size-change="onPageSizeChange"
+          :current-page.sync="pagination.pageNum"
+          :page-sizes="[10, 20, 50, 100]"
+          :page-size.sync="pagination.pageSize"
+          layout="sizes, prev, pager, next"
+          :total="spiderTotal">
+        </el-pagination>
+      </div>
+      <!--./table list-->
+    </el-card>
   </div>
 </template>
 
 <script>
 import {
-  mapState
+  mapState,
+  mapGetters
 } from 'vuex'
-
+import dayjs from 'dayjs'
+import CrawlConfirmDialog from '../../components/Common/CrawlConfirmDialog'
+import StatusTag from '../../components/Status/StatusTag'
+import request from '../../api/request'
 export default {
   name: 'SpiderList',
+  components: {
+    CrawlConfirmDialog,
+    StatusTag
+  },
   data () {
     return {
       pagination: {
-        pageNum: 0,
+        pageNum: 1,
         pageSize: 10
       },
       importLoading: false,
+      addConfigurableLoading: false,
       isEditMode: false,
       dialogVisible: false,
+      addDialogVisible: false,
+      addConfigurableDialogVisible: false,
+      addCustomizedDialogVisible: false,
+      crawlConfirmDialogVisible: false,
+      activeSpiderId: undefined,
       filter: {
-        keyword: ''
+        keyword: '',
+        type: ''
       },
+      types: [],
       // tableData,
       columns: [
-        { name: 'name', label: 'Name', width: 'auto' },
-        { name: 'site_name', label: 'Site', width: '120' },
-        { name: 'type', label: 'Spider Type', width: '120', sortable: true },
-        { name: 'lang', label: 'Language', width: '120', sortable: true },
-        { name: 'task_ts', label: 'Last Run', width: '160' },
-        { name: 'last_7d_tasks', label: 'Last 7-Day Tasks', width: '80' },
-        { name: 'last_5_errors', label: 'Last 5-Run Errors', width: '80' }
+        { name: 'display_name', label: 'Name', width: '160', align: 'left' },
+        { name: 'type', label: 'Spider Type', width: '120' },
+        { name: 'last_status', label: 'Last Status', width: '120' },
+        { name: 'last_run_ts', label: 'Last Run', width: '140' },
+        // { name: 'update_ts', label: 'Update Time', width: '140' },
+        { name: 'remark', label: 'Remark', width: '140' }
       ],
       spiderFormRules: {
         name: [{ required: true, message: 'Required Field', trigger: 'change' }]
-      }
+      },
+      fileList: []
     }
   },
   computed: {
     ...mapState('spider', [
       'importForm',
       'spiderList',
-      'spiderForm'
+      'spiderForm',
+      'spiderTotal'
     ]),
-    filteredTableData () {
-      return this.spiderList.filter(d => {
-        if (!this.filter.keyword) return true
-        for (let i = 0; i < this.columns.length; i++) {
-          const colName = this.columns[i].name
-          if (d[colName] && d[colName].toLowerCase().indexOf(this.filter.keyword.toLowerCase()) > -1) {
-            return true
-          }
-        }
-        return false
-      })
-    }
+    ...mapGetters('user', [
+      'token'
+    ])
   },
   methods: {
-    onSearch (value) {
-      console.log(value)
+    onSpiderTypeChange (val) {
+      this.filter.type = val
+      this.getList()
+    },
+    onPageSizeChange (val) {
+      this.pagination.pageSize = val
+      this.getList()
+    },
+    onPageNumChange (val) {
+      this.pagination.pageNum = val
+      this.getList()
+    },
+    onSearch () {
+      this.getList()
     },
     onAdd () {
+      // this.addDialogVisible = true
+      this.onAddCustomized()
+    },
+    onAddConfigurable () {
       this.$store.commit('spider/SET_SPIDER_FORM', {})
-      this.isEditMode = false
-      this.dialogVisible = true
+      this.addDialogVisible = false
+      this.addConfigurableDialogVisible = true
+      this.$st.sendEv('爬虫', '添加爬虫-可配置爬虫')
+    },
+    onAddCustomized () {
+      this.addDialogVisible = false
+      this.addCustomizedDialogVisible = true
+      this.$st.sendEv('爬虫', '添加爬虫-自定义爬虫')
     },
     onRefresh () {
-      this.$store.dispatch('spider/getSpiderList')
+      this.getList()
+      this.$st.sendEv('爬虫', '刷新')
     },
     onSubmit () {
       const vm = this
@@ -227,6 +360,15 @@ export default {
       this.$store.commit('spider/SET_SPIDER_FORM', {})
       this.dialogVisible = false
     },
+    onAddDialogClose () {
+      this.addDialogVisible = false
+    },
+    onAddCustomizedDialogClose () {
+      this.addCustomizedDialogVisible = false
+    },
+    onAddConfigurableDialogClose () {
+      this.addConfigurableDialogVisible = false
+    },
     onEdit (row) {
       this.isEditMode = true
       this.$store.commit('spider/SET_SPIDER_FORM', row)
@@ -245,40 +387,17 @@ export default {
               message: 'Deleted successfully'
             })
           })
-      })
-    },
-    onDeploy (row) {
-      this.$confirm(this.$t('Are you sure to deploy this spider?'), this.$t('Notification'), {
-        confirmButtonText: this.$t('Confirm'),
-        cancelButtonText: this.$t('Cancel'),
-        type: 'warning'
-      }).then(() => {
-        this.$store.dispatch('spider/deploySpider', row._id)
-          .then(() => {
-            this.$message({
-              type: 'success',
-              message: 'Deployed successfully'
-            })
-          })
+        this.$st.sendEv('爬虫', '删除')
       })
     },
     onCrawl (row) {
-      this.$confirm(this.$t('Are you sure to run this spider?'), this.$t('Notification'), {
-        confirmButtonText: this.$t('Confirm'),
-        cancelButtonText: this.$t('Cancel')
-      })
-        .then(() => {
-          this.$store.dispatch('spider/crawlSpider', row._id)
-            .then(() => {
-              this.$message.success(this.$t(`Spider task has been scheduled`))
-            })
-        })
+      this.crawlConfirmDialogVisible = true
+      this.activeSpiderId = row._id
+      this.$st.sendEv('爬虫', '点击运行')
     },
     onView (row) {
-      this.$router.push(`/spiders/${row._id}`)
-    },
-    onPageChange () {
-      this.$store.dispatch('spider/getSpiderList')
+      this.$router.push('/spiders/' + row._id)
+      this.$st.sendEv('爬虫', '查看')
     },
     onImport () {
       this.$refs.importForm.validate(valid => {
@@ -288,7 +407,7 @@ export default {
           this.$store.dispatch('spider/importGithub')
             .then(response => {
               this.$message.success('Import repo successfully')
-              this.$store.dispatch('spider/getSpiderList')
+              this.getList()
             })
             .catch(response => {
               this.$message.error(response.data.error)
@@ -299,35 +418,97 @@ export default {
             })
         }
       })
+      this.$st.sendEv('爬虫', '导入爬虫')
     },
     openImportDialog () {
       this.dialogVisible = true
     },
-    onDeployAll () {
-      this.$confirm(this.$t('Are you sure to deploy all spiders to active nodes?'), this.$t('Notification'), {
-        confirmButtonText: this.$t('Confirm'),
-        cancelButtonText: this.$t('Cancel'),
-        type: 'warning'
-      })
-        .then(() => {
-          this.$store.dispatch('spider/deployAll')
-            .then(() => {
-              this.$message.success(this.$t('Deployed all spiders successfully'))
-            })
-        })
-    },
     isShowRun (row) {
-      if (!row.deploy_ts) {
+      if (row.cmd) {
+        return true
+      } else {
         return false
       }
-      if (!row.cmd) {
-        return false
+    },
+    isCustomized (row) {
+      return row.type === 'customized'
+    },
+    fetchSiteSuggestions (keyword, callback) {
+      this.$request.get('/sites', {
+        keyword: keyword,
+        page_num: 1,
+        page_size: 100
+      }).then(response => {
+        const data = response.data.items.map(d => {
+          d.value = d.name + ' | ' + d.domain
+          return d
+        })
+        callback(data)
+      })
+    },
+    onSiteSelect (item) {
+      this.$store.commit('spider/SET_FILTER_SITE', item._id)
+      this.$st.sendEv('爬虫', '搜索网站')
+    },
+    onAddConfigurableSiteSelect (item) {
+      this.spiderForm.site = item._id
+    },
+    onAddConfigurableSpider () {
+      this.$refs['addConfigurableForm'].validate(res => {
+        if (res) {
+          this.addConfigurableLoading = true
+          this.$store.dispatch('spider/addSpider')
+            .finally(() => {
+              this.addConfigurableLoading = false
+              this.addConfigurableDialogVisible = false
+            })
+        }
+      })
+    },
+    onUploadChange () {
+    },
+    onUploadSuccess () {
+      // clear fileList
+      this.fileList = []
+
+      // fetch spider list
+      setTimeout(() => {
+        this.getList()
+      }, 500)
+
+      // close popup
+      this.addCustomizedDialogVisible = false
+    },
+    getTime (str) {
+      if (!str || str.match('^0001')) return 'NA'
+      return dayjs(str).format('YYYY-MM-DD HH:mm:ss')
+    },
+    onRowClick (row, event, column) {
+      if (column.label !== this.$t('Action')) {
+        this.onView(row)
       }
-      return true
+    },
+    getList () {
+      let params = {
+        pageNum: this.pagination.pageNum,
+        pageSize: this.pagination.pageSize,
+        keyword: this.filter.keyword,
+        type: this.filter.type
+      }
+      this.$store.dispatch('spider/getSpiderList', params)
+    },
+    getTypes () {
+      request.get(`/spider/types`).then(resp => {
+        this.types = resp.data.data
+      })
     }
   },
   created () {
-    this.$store.dispatch('spider/getSpiderList')
+    this.getTypes()
+    // fetch spider list
+    this.getList()
+  },
+  mounted () {
   }
 }
 </script>
@@ -355,7 +536,7 @@ export default {
   }
 
   .table {
-    margin-top: 20px;
+    margin-top: 8px;
     border-radius: 5px;
 
     .el-button {
@@ -367,4 +548,50 @@ export default {
     background-color: red;
   }
 
+  .add-spider-wrapper {
+    display: flex;
+    justify-content: center;
+
+    .add-spider-item {
+      cursor: pointer;
+      width: 180px;
+      font-size: 18px;
+      height: 120px;
+      margin: 0 20px;
+      flex-basis: 40%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .add-spider-item.primary {
+      color: #409eff;
+      background: rgba(64, 158, 255, .1);
+      border: 1px solid rgba(64, 158, 255, .1);
+    }
+
+    .add-spider-item.success {
+      color: #67c23a;
+      background: rgba(103, 194, 58, .1);
+      border: 1px solid rgba(103, 194, 58, .1);
+    }
+
+    .add-spider-item.info {
+      color: #909399;
+      background: #f4f4f5;
+      border: 1px solid #e9e9eb;
+    }
+
+  }
+
+  .el-autocomplete {
+    width: 100%;
+  }
+
+</style>
+
+<style scoped>
+  .el-table >>> tr {
+    cursor: pointer;
+  }
 </style>
